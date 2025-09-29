@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Processing;
 
 namespace ImageConverter.Controllers
@@ -37,7 +37,7 @@ namespace ImageConverter.Controllers
             if (ms.Length <= MaxFileSize)
             {
                 // If the image is within the limit, return it as-is
-                return File(ms.ToArray(), "image/png");
+                return File(ms.ToArray(), "image/jpeg");
             }
 
             // Compress the image to fit the 4MB limit
@@ -48,31 +48,25 @@ namespace ImageConverter.Controllers
                 return StatusCode(500, "Failed to compress the image.");
             }
 
-            return File(compressedImage.ToArray(), "image/png");
+            return File(compressedImage.ToArray(), "image/jpeg");
         }
 
         private bool IsSupportedImageContentType(string contentType)
         {
-            return contentType.StartsWith("image/");
+            return contentType.StartsWith("image/jpeg");
         }
 
         private async Task<MemoryStream> CompressToSizeAsync(Stream inputStream, int targetSize)
         {
-            using var input = Image.Load(inputStream);
-            //var quality = 80; // Initial quality setting
+            inputStream.Seek(0, SeekOrigin.Begin);
+            using var input = await Image.LoadAsync(inputStream);
+            using var outputStream = new MemoryStream();
+            await input.SaveAsJpegAsync(outputStream, new JpegEncoder() { Quality = 80});
 
-            //while (quality > 10)
-            //{
-                using var outputStream = new MemoryStream();
-                await input.SaveAsPngAsync(outputStream, new PngEncoder());
-
-                if (outputStream.Length <= targetSize)
-                {
-                    return outputStream;
-                }
-
-                //quality -= 10; // Reduce quality and try again
-            //}
+            if (outputStream.Length <= targetSize)
+            {
+                return outputStream;
+            }
 
             return null;
         }

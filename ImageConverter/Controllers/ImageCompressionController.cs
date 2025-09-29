@@ -23,7 +23,7 @@ namespace ImageConverter.Controllers
 
         [HttpPost("compress")]
         public async Task<IActionResult> CompressImage(IFormFile imageFile)
-        {
+        {           
             // Check if the uploaded file is an image
             if (imageFile == null || !IsSupportedImageContentType(imageFile.ContentType))
             {
@@ -58,14 +58,21 @@ namespace ImageConverter.Controllers
 
         private async Task<MemoryStream> CompressToSizeAsync(Stream inputStream, int targetSize)
         {
-            inputStream.Seek(0, SeekOrigin.Begin);
-            using var input = await Image.LoadAsync(inputStream);
-            using var outputStream = new MemoryStream();
-            await input.SaveAsJpegAsync(outputStream, new JpegEncoder() { Quality = 80});
-
-            if (outputStream.Length <= targetSize)
+            try
             {
-                return outputStream;
+                inputStream.Seek(0, SeekOrigin.Begin);
+                using var input = await Image.LoadAsync(inputStream);
+                using var outputStream = new MemoryStream();
+                await input.SaveAsJpegAsync(outputStream, new JpegEncoder() { Quality = 80 });
+
+                if (outputStream.Length <= targetSize)
+                {
+                    return outputStream;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during image compression.");
             }
 
             return null;
